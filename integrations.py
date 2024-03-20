@@ -2,18 +2,22 @@ import dataclasses
 
 from haystack import component
 from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.utils import Secret
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 # TODO: Handle Streaming
 
 class BaseCloudflareGenerator:
 
-    def __init__(self, account_id: str, api_token: str, model: str):
+    def __init__(self, 
+                 account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"), 
+                 api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"), 
+                 model: str = "@cf/meta/llama-2-7b-chat-int8"):
         self.url = (
-            f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
+            f"https://api.cloudflare.com/client/v4/accounts/{account_id.resolve_value()}/ai/run/{model}"
         )
-        self.headers = {"Authorization": f"Bearer {api_token}"}
+        self.headers = {"Authorization": f"Bearer {api_token.resolve_value()}"}
     
     def _convert_to_message_json(self, messages: List[ChatMessage]) -> List[Dict[str, str]]:
         valid_keys = {"role", "content"}
@@ -28,7 +32,7 @@ class BaseCloudflareGenerator:
 @component
 class CloudflareChatGenerator(BaseCloudflareGenerator):
 
-    @component.output_types(response=ChatMessage)
+    @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
         # TODO: Handle streaming 
         response = requests.post(
@@ -36,7 +40,8 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
         )
         # TODO: Handle errors?
         json_value = response.json()
-        return {"response": ChatMessage.from_assistant(json_value["result"]["response"])}
+        messages.append(ChatMessage.from_assistant(json_value["result"]["response"]))
+        return {"replies": messages}
 
 
 @component
@@ -92,7 +97,11 @@ Should
 """
 
     def __init__(
-        self, account_id: str, api_token: str, model: str ="@hf/thebloke/llamaguard-7b-awq", unsafe_categories: str = None
+        self, 
+        account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"), 
+        api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),  
+        model: str ="@hf/thebloke/llamaguard-7b-awq", 
+        unsafe_categories: str = None
     ):
         if unsafe_categories is None:
             unsafe_categories = self.DEFAULT_UNSAFE_CATEGORIES
@@ -114,7 +123,11 @@ Should
         return reasons
              
 
-    @component.output_types(response=str, reason=str)
+    @component.output_types(safe_response=Optional[str], 
+                            unsafe_response=Optional[str], 
+                            safe_messages=List[ChatMessage], 
+                            unsafe_messages=List[ChatMessage], 
+                            reasons=List[str])
     def run(self, messages: List[ChatMessage]):
         # Pull out the latest message
         role_title = messages[-1].role.title()
@@ -149,5 +162,21 @@ Provide your safety assessment for '{role_title}' in the above conversation:
         )
         # TODO: Handle errors?
         json_value = response.json()
-        value = json_value["result"]["response"].strip()
-        return {"response": value}
+        response = json_value["result"]["response"].strip()
+        if response.startswith('unsafe'):
+            reasons = self.unsafe_reasoning_from_response(response)
+            return {"unsafe_response": response, "reasons": reasons, "unsafe_messages": messages}
+        else:
+            return {"safe_response": response, "safe_messages": messages}
+
+
+@component
+class BustedGenerator:
+
+    @component.output_types(response=ChatMessage)
+    def run(self, user_reasons: List[str] = None, assistant_reasons: List[str] = None):
+        if user_reasons:
+            return {"response": ChatMessage.from_assistant(f"You said something naughty: {user_reasons}")}
+        elif assistant_reasons:
+            return {"response": ChatMessage.from_assistant(f"The generated answer was naughty: {assistant_reasons}")}
+
