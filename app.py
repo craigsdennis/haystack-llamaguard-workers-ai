@@ -1,9 +1,5 @@
-import os
-from typing import Dict, List
-
 from dotenv import load_dotenv
-from haystack import component, Pipeline
-from haystack.components.routers import ConditionalRouter
+from haystack import Pipeline
 from haystack.dataclasses import ChatMessage
 import streamlit as st
 
@@ -29,12 +25,9 @@ pipeline.connect("user_moderator.reasons", "busted.user_reasons")
 pipeline.connect("llm.replies", "assistant_moderator.messages")
 pipeline.connect("assistant_moderator.reasons", "busted.assistant_reasons")
 
-
-pipeline = get_pipeline()
-
 # Initialize chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [] # ChatMessage.from_system("You always respond with 'I can help with that!' and nothing else")]
 
 # Display all messages if they exist?
 for msg in st.session_state.messages:
@@ -47,15 +40,11 @@ if prompt := st.chat_input("Let's chat"):
     with st.chat_message("user"):
         st.markdown(prompt)
     results = pipeline.run({"user_moderator": {"messages": st.session_state.messages}})
-    
-    if "assistant_moderator" in results:
-        if "busted" in results:
-            msg = results["assistant_moderator"]["unsafe_messages"][-1]
-        else:
+    if "busted" in results:
+        msg = results["busted"]["response"]
+    else:
+        if "assistant_moderator" in results:
             msg = results["assistant_moderator"]["safe_messages"][-1]
-    elif "user_moderator" in results:
-        if "busted" in results:
-            msg = results["busted"]["response"]
     st.session_state.messages.append(msg)
     with st.chat_message("assistant"):
         st.markdown(msg.content)

@@ -8,23 +8,28 @@ from typing import List, Dict, Optional
 
 # TODO: Handle Streaming
 
+
 class BaseCloudflareGenerator:
 
-    def __init__(self, 
-                 account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"), 
-                 api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"), 
-                 model: str = "@cf/meta/llama-2-7b-chat-int8"):
-        self.url = (
-            f"https://api.cloudflare.com/client/v4/accounts/{account_id.resolve_value()}/ai/run/{model}"
-        )
+    def __init__(
+        self,
+        account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"),
+        api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),
+        model: str = "@cf/meta/llama-2-7b-chat-int8",
+    ):
+        self.url = f"https://api.cloudflare.com/client/v4/accounts/{account_id.resolve_value()}/ai/run/{model}"
         self.headers = {"Authorization": f"Bearer {api_token.resolve_value()}"}
-    
-    def _convert_to_message_json(self, messages: List[ChatMessage]) -> List[Dict[str, str]]:
+
+    def _convert_to_message_json(
+        self, messages: List[ChatMessage]
+    ) -> List[Dict[str, str]]:
         valid_keys = {"role", "content"}
         converted = []
         for m in messages:
             message_dict = dataclasses.asdict(m)
-            filtered_message = {k: v for k, v in message_dict.items() if k in valid_keys and v}
+            filtered_message = {
+                k: v for k, v in message_dict.items() if k in valid_keys and v
+            }
             converted.append(filtered_message)
         return converted
 
@@ -34,9 +39,11 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
 
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
-        # TODO: Handle streaming 
+        # TODO: Handle streaming
         response = requests.post(
-            self.url, headers=self.headers, json={"messages": self._convert_to_message_json(messages)}
+            self.url,
+            headers=self.headers,
+            json={"messages": self._convert_to_message_json(messages)},
         )
         # TODO: Handle errors?
         json_value = response.json()
@@ -46,7 +53,7 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
 
 @component
 class LlamaGuard(BaseCloudflareGenerator):
-    
+
     DEFAULT_UNSAFE_CATEGORIES = """
 01: Violence and Hate.
 Should not
@@ -97,11 +104,11 @@ Should
 """
 
     def __init__(
-        self, 
-        account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"), 
-        api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),  
-        model: str ="@hf/thebloke/llamaguard-7b-awq", 
-        unsafe_categories: str = None
+        self,
+        account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"),
+        api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),
+        model: str = "@hf/thebloke/llamaguard-7b-awq",
+        unsafe_categories: str = None,
     ):
         if unsafe_categories is None:
             unsafe_categories = self.DEFAULT_UNSAFE_CATEGORIES
@@ -117,30 +124,33 @@ Should
         reasons = []
         lines = self.unsafe_categories.split("\n")
         for code in codes:
+            # Sometimes capital O is returned
+            code = code.replace("O", "0")
             for line in lines:
                 if line.startswith(code):
                     reasons.append(line)
         return reasons
-             
 
-    @component.output_types(safe_response=Optional[str], 
-                            unsafe_response=Optional[str], 
-                            safe_messages=List[ChatMessage], 
-                            unsafe_messages=List[ChatMessage], 
-                            reasons=List[str])
+    @component.output_types(
+        safe_response=Optional[str],
+        unsafe_response=Optional[str],
+        safe_messages=List[ChatMessage],
+        unsafe_messages=List[ChatMessage],
+        reasons=List[str],
+    )
     def run(self, messages: List[ChatMessage]):
         # Pull out the latest message
-        role_title = messages[-1].role.title()
-        
+        role_title = messages[-1].role.value.title()
+
         # User: It looks like this
         #
         # Assistant: Thank you for explaining
-        # 
+        #
         conversation_string = "\n\n".join(
             [
-                f"{message.role.title()}: {message.content}\n\n"
+                f"{message.role.value.title()}: {message.content}\n\n"
                 for message in messages
-                if message.role in {"user", "assistant"}
+                if message.role.value in {"user", "assistant"}
             ]
         )
         outer_prompt = f"""Task: Check if there is unsafe content in '{role_title}' messages in conversations according to our safety policy with the below categories.
@@ -163,9 +173,13 @@ Provide your safety assessment for '{role_title}' in the above conversation:
         # TODO: Handle errors?
         json_value = response.json()
         response = json_value["result"]["response"].strip()
-        if response.startswith('unsafe'):
+        if response.startswith("unsafe"): #and role_title == "Assistant":
             reasons = self.unsafe_reasoning_from_response(response)
-            return {"unsafe_response": response, "reasons": reasons, "unsafe_messages": messages}
+            return {
+                "unsafe_response": response,
+                "reasons": reasons,
+                "unsafe_messages": messages,
+            }
         else:
             return {"safe_response": response, "safe_messages": messages}
 
@@ -175,8 +189,16 @@ class BustedGenerator:
 
     @component.output_types(response=ChatMessage)
     def run(self, user_reasons: List[str] = None, assistant_reasons: List[str] = None):
+        print({"user_reasons": user_reasons, "assistant_reasons": assistant_reasons})
         if user_reasons:
-            return {"response": ChatMessage.from_assistant(f"You said something naughty: {user_reasons}")}
+            return {
+                "response": ChatMessage.from_assistant(
+                    f"You said something naughty: {user_reasons}"
+                )
+            }
         elif assistant_reasons:
-            return {"response": ChatMessage.from_assistant(f"The generated answer was naughty: {assistant_reasons}")}
-
+            return {
+                "response": ChatMessage.from_assistant(
+                    f"The generated answer was naughty: {assistant_reasons}"
+                )
+            }
