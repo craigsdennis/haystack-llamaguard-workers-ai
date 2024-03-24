@@ -1,10 +1,7 @@
-# Haystack - Cloudflare Workers AI + LlamaGuard
+# Haystack + LlamaGuard - Cloudflare Workers
 
-This is an exploration of the deepset orchestration framework Haystack using Cloudflare Workers AI.
+This is an exploration of the deepset orchestration framework [Haystack](https://haystack.deepset.ai/) using [Cloudflare Workers AI](https://ai.cloudflare.com) to provide LLM Guardrails using Meta's [Llama Guard](https://ai.meta.com/research/publications/llama-guard-llm-based-input-output-safeguard-for-human-ai-conversations/).
 
-It is VERY MUCH A WORK IN PROGRESS.
-
-Tread lightly.
 
 ## Installation
 
