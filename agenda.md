@@ -9,6 +9,7 @@
     - [ ] 🤷‍♂️ And maybe reintroduce you to Cloudflare
   - [ ] ❎ Llama Guard
   - [ ] 💪 Haystack
+  - [ ] 😘 Streamlit
 - [ ] 👩‍💻 Demos 
   - [ ] 😈 Naughty User
   - [ ] 😈 Naughty Assistant

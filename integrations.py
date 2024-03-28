@@ -1,10 +1,10 @@
 import dataclasses
+from typing import List, Dict, Optional
 
 from cloudflare import Cloudflare
 from haystack import component
-from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret
-from typing import List, Dict, Optional
+from haystack.dataclasses import ChatMessage
 
 # TODO: Handle Streaming
 
@@ -17,9 +17,7 @@ class BaseCloudflareGenerator:
         api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),
         model: str = "@cf/meta/llama-2-7b-chat-int8",
     ):
-        self.client = Cloudflare(
-           api_token=api_token.resolve_value() 
-        )
+        self.client = Cloudflare(api_token=api_token.resolve_value())
         self.account_id = account_id.resolve_value()
         self.model = model
 
@@ -43,9 +41,9 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
         result = self.client.workers.ai.run(
-            self.model, 
-            account_id=self.account_id, 
-            messages=self._convert_to_message_json(messages)
+            self.model,
+            account_id=self.account_id,
+            messages=self._convert_to_message_json(messages),
         )
         messages.append(ChatMessage.from_assistant(result["response"]))
         return {"replies": messages}
@@ -124,6 +122,8 @@ Should
         reasons = []
         lines = self.unsafe_categories.split("\n")
         for code in codes:
+            # Sometimes the non-zero prefixed category is returned
+            code = code.zfill(2)
             # Sometimes capital O is returned instead of 0
             code = code.replace("O", "0")
             for line in lines:
@@ -168,17 +168,11 @@ Provide your safety assessment for '{role_title}' in the above conversation:
 - If unsafe, a second line must include a comma-separated list of all violated categories.
         """
         result = self.client.workers.ai.run(
-            self.model, 
-            account_id=self.account_id,
-            prompt=outer_prompt
+            self.model, account_id=self.account_id, prompt=outer_prompt
         )
-        # response = requests.post(
-        #     self.url, headers=self.headers, json={"prompt": outer_prompt}
-        # )
-        # # TODO: Handle errors?
-        # json_value = response.json()
+        print(f"result {result}")
         response = result["response"].strip()
-        if response.startswith("unsafe"): #and role_title == "Assistant":
+        if response.startswith("unsafe"): # and role_title == "Assistant":
             reasons = self.unsafe_reasoning_from_response(response)
             return {
                 "unsafe_response": response,
