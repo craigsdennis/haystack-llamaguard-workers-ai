@@ -4,6 +4,7 @@ from haystack import component
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret
 import requests
+from requests.adapters import HTTPAdapter
 from typing import List, Dict, Optional
 
 # TODO: Handle Streaming
@@ -40,12 +41,13 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
         # TODO: Handle streaming
-        response = requests.post(
+        s = requests.Session()
+        s.mount(self.url, HTTPAdapter(max_retries=3))
+        response = s.post(
             self.url,
             headers=self.headers,
             json={"messages": self._convert_to_message_json(messages)},
         )
-        # TODO: Handle errors?
         json_value = response.json()
         messages.append(ChatMessage.from_assistant(json_value["result"]["response"]))
         return {"replies": messages}
@@ -124,7 +126,7 @@ Should
         reasons = []
         lines = self.unsafe_categories.split("\n")
         for code in codes:
-            # Sometimes capital O is returned
+            # Sometimes capital O is returned instead of 0
             code = code.replace("O", "0")
             for line in lines:
                 if line.startswith(code):
@@ -167,13 +169,14 @@ Provide your safety assessment for '{role_title}' in the above conversation:
 - First line must read 'safe' or 'unsafe'.
 - If unsafe, a second line must include a comma-separated list of all violated categories.
         """
-        response = requests.post(
+        s = requests.Session()
+        s.mount(self.url, HTTPAdapter(max_retries=3))
+        response = s.post(
             self.url, headers=self.headers, json={"prompt": outer_prompt}
         )
-        # TODO: Handle errors?
         json_value = response.json()
         response = json_value["result"]["response"].strip()
-        if response.startswith("unsafe"): #and role_title == "Assistant":
+        if response.startswith("unsafe"): # DEMO: and role_title == "Assistant":
             reasons = self.unsafe_reasoning_from_response(response)
             return {
                 "unsafe_response": response,

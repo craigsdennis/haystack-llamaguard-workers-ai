@@ -5,7 +5,8 @@
 - [ ] 💂‍♂️ What if we add an extra guard?
 - [ ] 🚀 Open Source
 - [ ] 🤝 Allow me to introduce you 
-  - [ ] 🧡 Cloudflare Workers AI 
+  - [ ] 🧡 Cloudflare Workers AI
+    - [ ] 🤷‍♂️ And maybe reintroduce you to Cloudflare
   - [ ] ❎ Llama Guard
   - [ ] 💪 Haystack
 - [ ] 👩‍💻 Demos 

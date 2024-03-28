@@ -25,6 +25,8 @@ pipeline.connect("user_moderator.reasons", "busted.user_reasons")
 pipeline.connect("llm.replies", "assistant_moderator.messages")
 pipeline.connect("assistant_moderator.reasons", "busted.assistant_reasons")
 
+# pipeline.draw("pipeline.png")
+
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = [] # ChatMessage.from_system("You always respond with 'I can help with that!' and nothing else")]
