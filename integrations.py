@@ -1,10 +1,14 @@
 import dataclasses
 
+from cloudflare import Cloudflare
 from haystack import component
 from haystack.dataclasses import ChatMessage, StreamingChunk
 from haystack.utils import Secret
+<<<<<<< HEAD
 import requests
 from requests.adapters import HTTPAdapter
+=======
+>>>>>>> switch-to-sdk
 from typing import List, Dict, Optional
 
 # TODO: Handle Streaming
@@ -18,8 +22,11 @@ class BaseCloudflareGenerator:
         api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),
         model: str = "@cf/meta/llama-2-7b-chat-int8",
     ):
-        self.url = f"https://api.cloudflare.com/client/v4/accounts/{account_id.resolve_value()}/ai/run/{model}"
-        self.headers = {"Authorization": f"Bearer {api_token.resolve_value()}"}
+        self.client = Cloudflare(
+           api_token=api_token.resolve_value() 
+        )
+        self.account_id = account_id.resolve_value()
+        self.model = model
 
     def _convert_to_message_json(
         self, messages: List[ChatMessage]
@@ -40,6 +47,7 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
 
     @component.output_types(replies=List[ChatMessage])
     def run(self, messages: List[ChatMessage]):
+<<<<<<< HEAD
         # TODO: Handle streaming
         s = requests.Session()
         s.mount(self.url, HTTPAdapter(max_retries=3))
@@ -50,6 +58,14 @@ class CloudflareChatGenerator(BaseCloudflareGenerator):
         )
         json_value = response.json()
         messages.append(ChatMessage.from_assistant(json_value["result"]["response"]))
+=======
+        result = self.client.workers.ai.run(
+            self.model, 
+            account_id=self.account_id, 
+            messages=self._convert_to_message_json(messages)
+        )
+        messages.append(ChatMessage.from_assistant(result["response"]))
+>>>>>>> switch-to-sdk
         return {"replies": messages}
 
 
@@ -169,6 +185,7 @@ Provide your safety assessment for '{role_title}' in the above conversation:
 - First line must read 'safe' or 'unsafe'.
 - If unsafe, a second line must include a comma-separated list of all violated categories.
         """
+<<<<<<< HEAD
         s = requests.Session()
         s.mount(self.url, HTTPAdapter(max_retries=3))
         response = s.post(
@@ -177,6 +194,20 @@ Provide your safety assessment for '{role_title}' in the above conversation:
         json_value = response.json()
         response = json_value["result"]["response"].strip()
         if response.startswith("unsafe"): # DEMO: and role_title == "Assistant":
+=======
+        result = self.client.workers.ai.run(
+            self.model, 
+            account_id=self.account_id,
+            prompt=outer_prompt
+        )
+        # response = requests.post(
+        #     self.url, headers=self.headers, json={"prompt": outer_prompt}
+        # )
+        # # TODO: Handle errors?
+        # json_value = response.json()
+        response = result["response"].strip()
+        if response.startswith("unsafe"): #and role_title == "Assistant":
+>>>>>>> switch-to-sdk
             reasons = self.unsafe_reasoning_from_response(response)
             return {
                 "unsafe_response": response,
