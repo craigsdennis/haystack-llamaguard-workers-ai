@@ -2,4 +2,4 @@ python-dotenv
 streamlit
 watchdog
 haystack-ai
-cloudflare==3.0.0b5
+cloudflare==3.0.0b7
