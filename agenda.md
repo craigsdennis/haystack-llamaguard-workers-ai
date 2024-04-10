@@ -8,8 +8,8 @@
   - [ ] 🧡 Cloudflare Workers AI
     - [ ] 🤷‍♂️ And maybe reintroduce you to Cloudflare
   - [ ] ❎ Llama Guard
-  - [ ] 💪 Haystack
   - [ ] 😘 Streamlit
+  - [ ] 💪 Haystack
 - [ ] 👩‍💻 Demos 
   - [ ] 😈 Naughty User
   - [ ] 😈 Naughty Assistant
