@@ -29,7 +29,7 @@ pipeline.connect("assistant_moderator.reasons", "busted.assistant_reasons")
 
 # Initialize chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = [] #ChatMessage.from_system("You always respond with 'I can help with that!' and nothing else")]
+    st.session_state.messages = [] # ChatMessage.from_system("You always respond with 'I can help with that!' and nothing else")]
 
 # Display all messages if they exist?
 for msg in st.session_state.messages:

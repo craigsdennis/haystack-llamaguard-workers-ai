@@ -172,7 +172,7 @@ Provide your safety assessment for '{role_title}' in the above conversation:
         )
         print(f"result {result}")
         response = result["response"].strip()
-        if response.startswith("unsafe"): # and role_title == "Assistant":
+        if response.startswith("unsafe"):  # and role_title == "Assistant":
             reasons = self.unsafe_reasoning_from_response(response)
             return {
                 "unsafe_response": response,
