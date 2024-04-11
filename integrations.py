@@ -15,7 +15,7 @@ class BaseCloudflareGenerator:
         self,
         account_id: Secret = Secret.from_env_var("CLOUDFLARE_ACCOUNT_ID"),
         api_token: Secret = Secret.from_env_var("CLOUDFLARE_API_TOKEN"),
-        model: str = "@cf/meta/llama-2-7b-chat-int8",
+        model: str = "@hf/nousresearch/hermes-2-pro-mistral-7b",
     ):
         self.client = Cloudflare(api_token=api_token.resolve_value())
         self.account_id = account_id.resolve_value()
@@ -172,7 +172,7 @@ Provide your safety assessment for '{role_title}' in the above conversation:
         )
         print(f"result {result}")
         response = result["response"].strip()
-        if response.startswith("unsafe"):  # and role_title == "Assistant":
+        if response.startswith("unsafe"): # and role_title == "Assistant":
             reasons = self.unsafe_reasoning_from_response(response)
             return {
                 "unsafe_response": response,
